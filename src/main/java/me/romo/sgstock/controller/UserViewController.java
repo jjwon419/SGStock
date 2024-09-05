@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @RequiredArgsConstructor
 @Controller
@@ -68,7 +70,7 @@ public class UserViewController {
         AtomicInteger count = new AtomicInteger(1);
         rankingService.getList().forEach((name, money) -> {
             int currentCount = count.getAndIncrement();
-            rankingResponses.add(new RankingResponse(currentCount, name, money));
+            rankingResponses.add(new RankingResponse(currentCount, maskName(name), money));
         });
         model.addAttribute("ranking", rankingResponses);
 
@@ -85,5 +87,40 @@ public class UserViewController {
         model.addAttribute("companiesOwned", companiesOwned);
         model.addAttribute("companies", companies);
         return "index";
+    }
+
+    @GetMapping("admin/ranking")
+    public String ranking(Model model){
+        ArrayList<RankingResponse> rankingResponses = new ArrayList<>();
+        AtomicInteger count = new AtomicInteger(1);
+        rankingService.getList().forEach((name, money) -> {
+            int currentCount = count.getAndIncrement();
+            rankingResponses.add(new RankingResponse(currentCount, name, money));
+        });
+        model.addAttribute("ranking", rankingResponses);
+        return "ranking";
+    }
+
+    public static String maskName(String name) {
+        // 숫자와 한글 이름 패턴 (공백 없이)
+        Pattern pattern = Pattern.compile("(\\d+)([가-힣]+)");
+        Matcher matcher = pattern.matcher(name);
+
+        if (matcher.find()) {
+            String id = matcher.group(1);
+            String realName = matcher.group(2);
+
+            // 이름의 중간 부분을 별로 가리기 (예: 조재원 -> 조**원)
+            int length = realName.length();
+            if (length > 2) {
+                String maskedRealName = realName.charAt(0) + "*".repeat(length - 2) + realName.charAt(length - 1);
+                return id + maskedRealName;
+            } else {
+                // 이름이 너무 짧아서 가릴 수 없는 경우
+                return id + realName;
+            }
+        } else {
+            return name; // 형식이 맞지 않으면 원래 이름을 반환
+        }
     }
 }
